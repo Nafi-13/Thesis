@@ -11,7 +11,10 @@ contract Ownable {
   uint public hidden_number1;
   uint public hidden_number2;
   uint private owner_count=0;
-  uint public x=10;
+  uint private request_key;
+  bool private request=false;
+  bool private open_request=false;
+  address public requested_owner;
   uint private message;
 
   constructor() {
@@ -25,7 +28,33 @@ contract Ownable {
     _;
   }
 
-  function transferOwnership(address _newOwner, uint _h1, uint _h2, uint _message) public onlyOwner {
+  modifier requestOkay() {
+      require(request==true,"No request for initialization");
+      _;
+  }
+
+  function openRequestAccess(address _requested_owner, uint _request_key) public onlyOwner {
+      require(open_request==false);
+      require(request==false);
+      require(_requested_owner!=owner);
+      requested_owner=_requested_owner;
+      request_key=_request_key;
+      open_request=true;
+
+  }
+
+  function requestAccess(uint _key) public {
+      require(request==false);
+      require(open_request==true);
+      require(requested_owner==msg.sender);
+      require(request_key==_key);
+      request=true;
+      open_request=false;
+
+
+  }
+
+  function transferOwnership(address _newOwner, uint _h1, uint _h2, uint _message) public onlyOwner requestOkay {
     require(_newOwner != address(0), "The new owner cannot be the null address");
     require(_newOwner != owner, "The new owner must be different from the current owner");
     //require(_encryptedKey > 0, "The encrypted key must be a non-empty string");
@@ -82,7 +111,7 @@ contract Ownable {
         //uint weight;
         bool votedd;
         bool authorizedd;
-        string votername;
+        //string votername;
 
         //uint256 vote;
     }
@@ -230,20 +259,6 @@ contract Ownable {
 
 
 
-
-
-
-
-
-
-
-  /*function display(uint checkX) public onlyOwner{
-      require(owner_count>0);
-      require(checkX==owner_count);
-      require(owner_list[owner]==1);
-      owner_list[owner]++;
-      x=x+10;
-  }*/
 }
 
 
