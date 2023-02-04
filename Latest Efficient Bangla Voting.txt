@@ -12,16 +12,27 @@ contract Ownable {
   uint public hidden_number2;
   uint private owner_count=0;
   uint private request_key;
+
   bool private request=false;
   bool private open_request=false;
-  address public requested_owner;
+
+  bool private vote_req=false;
+  bool private start_vote_permit=false;
+  uint private permitForVoteCount=0;
+
+
+  bool private terminate_req=false;
+  bool private terminate_vote_permit=false;
+  uint private permitForTerminationCount=0;
+
+  address private requested_owner;
   uint private message;
 
   constructor() {
     owner = msg.sender;
   }
 
-  mapping(address => uint) private owner_list;
+  mapping(address => uint) public owner_list;
 
   modifier onlyOwner() {
     require(msg.sender == owner, "Only the owner can perform this action");
@@ -111,6 +122,7 @@ contract Ownable {
         //uint weight;
         bool votedd;
         bool authorizedd;
+        bytes32 voteHash;
         //string votername;
 
         //uint256 vote;
@@ -151,6 +163,7 @@ contract Ownable {
       require(owner_count>0);
       require(checkX==owner_count);
       require(owner_list[owner]==1);
+      require(requested_owner==msg.sender,"Requested User Didnot Enter");
       owner_list[owner]++;
         //electionName = _name;
       state = State.Created;
@@ -180,7 +193,7 @@ contract Ownable {
         candidates[next_candidate].voteCount = 0;
         candidates[next_candidate].id = _id;
         //next_candidate++;
-        if (next_candidate + 1 < candidates.length) {
+        if (next_candidate + 1 <= candidates.length) {
             next_candidate++;
         }
         console.log("XX");
@@ -196,9 +209,32 @@ contract Ownable {
         //voted[person].authorizedd = true;
         voted[person].authorizedd = true;
     }
+    
+    //request for starting the vote
+    function requestToStartVote() public inState(State.Created) onlyOwner{
+        require(vote_req==false);
+        vote_req=true;
+
+    }
+
+    //permission given by all owners to start the vote
+    function givePermissionToStartVote() public inState(State.Created) {
+         require(start_vote_permit==false,"Permission is already granted");
+         require(vote_req==true,"No request for starting vote");
+         require(owner_list[msg.sender]==1 || owner_list[msg.sender]==2,"kichu de");
+         require(msg.sender!=owner,"Self Permission Not Allowed");
+         permitForVoteCount++;
+         owner_list[msg.sender]+=2;
+         if(permitForVoteCount==owner_count)
+         {
+             start_vote_permit=true;
+         }
+
+    }
 
     function startVote() public inState(State.Created) onlyOwner {
-        expiration = block.timestamp + 30 seconds;
+        require(start_vote_permit==true,"Permission Acquisition Required");
+        expiration = block.timestamp + 60 seconds;
         state = State.Voting;
         
     }
@@ -207,7 +243,7 @@ contract Ownable {
         return block.timestamp >= expiration;
     }
 
-    function vote(uint256 _voteIndex) public inState(State.Voting) {
+    function vote(uint256 _voteIndex, uint256 _snum) public inState(State.Voting) {
         // Check if the time limit for voting has been reached
         if (checkExpiration()) {
             // Time limit has been reached, do not allow the vote to be cast
@@ -232,12 +268,46 @@ contract Ownable {
             candidates[_voteIndex].voteCount += 1;
             totalVotes += 1;
             voted[msg.sender].votedd = true;
+            voted[msg.sender].voteHash = sha256(abi.encodePacked(msg.sender,_voteIndex, _snum));
             
         }
         
     }
 
+    function verify(uint256 _voteIndex, uint256 _snum) public inState(State.Voting) view returns (bool){
+         require(voted[msg.sender].votedd == true,"Vote first");
+         bytes32 _voteHash = sha256(abi.encodePacked(msg.sender,_voteIndex,_snum));
+         return voted[msg.sender].voteHash==_voteHash;
+     }
+
+
+
+
+
+    //request for terminating the vote
+    function requestToTerminateVote() public inState(State.Voting) onlyOwner{
+        require(terminate_req==false);
+        terminate_req=true;
+
+    }
+
+    //permission given by all owners to terminate the vote
+    function givePermissionToTerminateVote() public inState(State.Voting) {
+         require(terminate_vote_permit==false,"Permission is already granted");
+         require(terminate_req==true,"No request for terminating vote");
+         require(owner_list[msg.sender]==3 || owner_list[msg.sender]==4,"kichu de");
+         require(msg.sender!=owner,"Self Permission Not Allowed");
+         permitForTerminationCount++;
+         owner_list[msg.sender]+=100;
+         if(permitForTerminationCount==owner_count)
+         {
+             terminate_vote_permit=true;
+         }
+
+    } 
+
     function terminate() public inState(State.Voting) onlyOwner {
+        require(terminate_vote_permit==true,"Permission Acquisition Required");
         for(uint i=0;i<candidates.length;i++)
         {
             if(candidates[i].voteCount>winningVote)
@@ -255,11 +325,4 @@ contract Ownable {
     }
 
 
-
-
-
-
 }
-
-
-
