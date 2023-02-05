@@ -13,6 +13,7 @@ contract Ownable {
   uint private owner_count=0;
   uint private request_key;
 
+  bool private first_req=false;
   bool private request=false;
   bool private open_request=false;
 
@@ -26,6 +27,7 @@ contract Ownable {
   uint private permitForTerminationCount=0;
 
   address private requested_owner;
+  address private first_request_address;
   uint private message;
 
   constructor() {
@@ -44,10 +46,21 @@ contract Ownable {
       _;
   }
 
+
+  //first request to start
+  function firstRequest() public {
+      require(first_req==false,"Ekbar Request Hoye gese");
+      require(msg.sender!=owner,"Self Request Not Allowed");
+      first_request_address=msg.sender;
+      first_req=true;
+  }
+
   function openRequestAccess(address _requested_owner, uint _request_key) public onlyOwner {
       require(open_request==false);
       require(request==false);
+      require(first_req==true,"Age Request Chaak vai");
       require(_requested_owner!=owner);
+      require(first_request_address==_requested_owner);
       requested_owner=_requested_owner;
       request_key=_request_key;
       open_request=true;
