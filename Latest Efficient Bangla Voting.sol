@@ -21,6 +21,8 @@ contract Ownable {
   bool private start_vote_permit=false;
   uint private permitForVoteCount=0;
 
+  bool private reject_vote_permit=false;
+
 
   bool private terminate_req=false;
   bool private terminate_vote_permit=false;
@@ -212,15 +214,33 @@ contract Ownable {
         console.log("XX");
     }
 
+    function updateCandidate(string memory _name, uint256 _id, uint256 _new_id)
+        public
+        inState(State.Created)
+        onlyOwner
+    {
+        
+        for (uint256 i = 0; i < next_candidate; i++) {
+            if (candidates[i].id == _id) {
+                candidates[i].name = _name;
+                console.log("Name Changed");
+                candidates[i].id = _new_id;
+                return;
+            }
+        }
+
+        
+    }
+
 
     function authorize(address person) public inState(State.Created) onlyOwner {
-        //voted[person].weight = 1;
-        //voters.push(Voter(_person, true,false));
-        // users[userCounter] = _address;
-        //isRegistered[person] = true;
-        //authorizedAddresses[_address] = true;
-        //voted[person].authorizedd = true;
+        require(voted[person].authorizedd==false,"Already Authorized");
         voted[person].authorizedd = true;
+    }
+
+    function unauthorize(address person) public inState(State.Created) onlyOwner {
+        require(voted[person].authorizedd==true,"Authorize First");
+        voted[person].authorizedd = false;
     }
     
     //request for starting the vote
@@ -241,13 +261,26 @@ contract Ownable {
          if(permitForVoteCount==owner_count)
          {
              start_vote_permit=true;
+             reject_vote_permit=false;
+             permitForVoteCount=0;
          }
 
     }
 
-    function startVote() public inState(State.Created) onlyOwner {
+    //rejects the request for starting the vote
+    function rejectPermissionToStartVote() public inState(State.Created) {
+        require(reject_vote_permit==false,"Already Terminated");
+        require(vote_req==true,"Age request koruk");
+        require(owner_list[msg.sender]==1 || owner_list[msg.sender]==2,"kichu de");
+        require(msg.sender!=owner,"Self Permission Not Allowed");
+        reject_vote_permit=true;
+
+    }
+
+    function startVote(uint256 t) public inState(State.Created) onlyOwner {
         require(start_vote_permit==true,"Permission Acquisition Required");
-        expiration = block.timestamp + 60 seconds;
+        require(reject_vote_permit==false,"Reject kore rakhse");
+        expiration = block.timestamp + t*1 seconds;
         state = State.Voting;
         
     }
