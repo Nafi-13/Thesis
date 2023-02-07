@@ -36,6 +36,7 @@ contract Ownable {
     owner = msg.sender;
   }
 
+  //to keep count of the owners
   mapping(address => uint) public owner_list;
 
   modifier onlyOwner() {
@@ -51,16 +52,17 @@ contract Ownable {
 
   //first request to start
   function firstRequest() public {
-      require(first_req==false,"Ekbar Request Hoye gese");
+      require(first_req==false,"Request has been made already");
       require(msg.sender!=owner,"Self Request Not Allowed");
       first_request_address=msg.sender;
       first_req=true;
   }
 
+  //Verification stage for the requested user
   function openRequestAccess(address _requested_owner, uint _request_key) public onlyOwner {
       require(open_request==false);
       require(request==false);
-      require(first_req==true,"Age Request Chaak vai");
+      require(first_req==true,"Initial Request Required");
       require(_requested_owner!=owner);
       require(first_request_address==_requested_owner);
       requested_owner=_requested_owner;
@@ -69,6 +71,7 @@ contract Ownable {
 
   }
 
+  //Stage for the requested user to verify his request
   function requestAccess(uint _key) public {
       require(request==false);
       require(open_request==true);
@@ -80,10 +83,12 @@ contract Ownable {
 
   }
 
+
+  //Beginning of the Linear Authorization Chain method
+  //First Authority transferring the ownership to the Second Authority
   function transferOwnership(address _newOwner, uint _h1, uint _h2, uint _message) public onlyOwner requestOkay {
     require(_newOwner != address(0), "The new owner cannot be the null address");
     require(_newOwner != owner, "The new owner must be different from the current owner");
-    //require(_encryptedKey > 0, "The encrypted key must be a non-empty string");
     require(owner_list[owner]==0);
 
     nextOwner = _newOwner;
@@ -94,6 +99,7 @@ contract Ownable {
     owner_count++;
   }
 
+  //Function for a pending Authority to accept ownership
   function acceptOwnership(uint _checkMessage,uint _owner_count) public {
     require(msg.sender == nextOwner, "Only the next owner can accept ownership");
     require(_owner_count==owner_count);
@@ -108,10 +114,10 @@ contract Ownable {
     hidden_number2 = 0;
   }
 
+  //Function for the other Authorities to transfer ownerships to others
   function transferOwnershipToAnotherParty(address _anotherParty, uint _h1,uint _h2, uint _message) public onlyOwner {
     require(_anotherParty != address(0), "The another party cannot be the null address");
     require(_anotherParty != owner, "The another party must be different from the current owner");
-    //require(_encryptedKey > 0, "The encrypted key must be a non-empty string");
     require(owner_list[owner]==1);
 
     owner_list[owner]++;
@@ -121,11 +127,13 @@ contract Ownable {
     message=_message;
     owner_count++;
   }
+  //Ending of the Linear Authorization Chain method
 
 
 
 
   //Election Process
+  //Pre-Election Process
   struct Candidate {
         string name;
         uint256 voteCount;
@@ -133,24 +141,18 @@ contract Ownable {
     }
 
     struct Voter {
-        //address voterr;
-        //uint weight;
         bool votedd;
         bool authorizedd;
         bytes32 voteHash;
-        //string votername;
-
-        //uint256 vote;
     }
 
     uint public expiration;
     uint256 public winningVote = 0;
     string public winnerName;
     string public electionName;
-    string public names;
+    //string public names;
    
 
-    //mapping(address => Voter) public voterss;
     mapping(address => Voter) public voted;
 
     Candidate[5] public candidates;
@@ -173,31 +175,30 @@ contract Ownable {
         _;
     }
 
-
-     function startElection(uint256 checkX) public onlyOwner inState(State.Pre_election) {
+     //Function for the requested user to initiate the Election
+     function startElection(uint256 checkX,uint _checkMessage,string memory _electionName) public onlyOwner inState(State.Pre_election) {
       require(owner_count>0);
       require(checkX==owner_count);
+      require(_checkMessage==message);
       require(owner_list[owner]==1);
       require(requested_owner==msg.sender,"Requested User Didnot Enter");
       owner_list[owner]++;
-        //electionName = _name;
+      electionName=_electionName;
       state = State.Created;
     }
 
+
+    //Function to Add Candidates
     function addCandidate(string memory _name, uint256 _id)
         public
         inState(State.Created)
         onlyOwner
     {
-        console.log("log 1");
-        
-        console.log("log else");
         if (next_candidate >= candidates.length) {
             console.log("No spots left");
             return;
         }
         for (uint256 i = 0; i < next_candidate; i++) {
-            console.log("log 2");
             if (candidates[i].id == _id) {
                 console.log("Same id");
                 return;
@@ -207,13 +208,12 @@ contract Ownable {
         candidates[next_candidate].name = _name;
         candidates[next_candidate].voteCount = 0;
         candidates[next_candidate].id = _id;
-        //next_candidate++;
         if (next_candidate + 1 <= candidates.length) {
             next_candidate++;
         }
-        console.log("XX");
     }
 
+    //Function to modify the Candidate
     function updateCandidate(string memory _name, uint256 _id, uint256 _new_id)
         public
         inState(State.Created)
@@ -232,25 +232,26 @@ contract Ownable {
         
     }
 
-
+    //Function to Authorize a Voter
     function authorize(address person) public inState(State.Created) onlyOwner {
         require(voted[person].authorizedd==false,"Already Authorized");
         voted[person].authorizedd = true;
     }
 
+     //Function to UnAuthorize a Voter
     function unauthorize(address person) public inState(State.Created) onlyOwner {
         require(voted[person].authorizedd==true,"Authorize First");
         voted[person].authorizedd = false;
     }
     
-    //request for starting the vote
+    //Request for starting the Election-Phase
     function requestToStartVote() public inState(State.Created) onlyOwner{
         require(vote_req==false);
         vote_req=true;
 
     }
 
-    //permission given by all owners to start the vote
+    //Permission given by all owners to start the Election-Phase
     function givePermissionToStartVote() public inState(State.Created) {
          require(start_vote_permit==false,"Permission is already granted");
          require(vote_req==true,"No request for starting vote");
@@ -267,16 +268,19 @@ contract Ownable {
 
     }
 
-    //rejects the request for starting the vote
+    //Rejects the request for starting the Election-Phase
     function rejectPermissionToStartVote() public inState(State.Created) {
         require(reject_vote_permit==false,"Already Terminated");
         require(vote_req==true,"Age request koruk");
         require(owner_list[msg.sender]==1 || owner_list[msg.sender]==2,"kichu de");
         require(msg.sender!=owner,"Self Permission Not Allowed");
         reject_vote_permit=true;
+        vote_req=false;
 
     }
 
+
+    //Function to Start the Election-Phase after verification of other Authorities
     function startVote(uint256 t) public inState(State.Created) onlyOwner {
         require(start_vote_permit==true,"Permission Acquisition Required");
         require(reject_vote_permit==false,"Reject kore rakhse");
@@ -286,6 +290,7 @@ contract Ownable {
     }
 
     function checkExpiration() public inState(State.Voting) view returns (bool) {
+        require(voted[msg.sender].authorizedd == true, "You Must be Authorized to Check");
         return block.timestamp >= expiration;
     }
 
@@ -303,14 +308,13 @@ contract Ownable {
                 }
             }
             state = State.Ended;
-            showResult();
+            //showResult();
             return;
         }
         else
         {
-            //console.log("Time ase mama");
             require(voted[msg.sender].votedd == false, "user already voted");
-            require(voted[msg.sender].authorizedd == true, "problem occuring here");
+            require(voted[msg.sender].authorizedd == true, "user not authorized");
             candidates[_voteIndex].voteCount += 1;
             totalVotes += 1;
             voted[msg.sender].votedd = true;
@@ -320,8 +324,11 @@ contract Ownable {
         
     }
 
+
+    //Function to verify the vote 
     function verify(uint256 _voteIndex, uint256 _snum) public inState(State.Voting) view returns (bool){
          require(voted[msg.sender].votedd == true,"Vote first");
+         require(voted[msg.sender].authorizedd == true, "You Need to be Authorized to Check");
          bytes32 _voteHash = sha256(abi.encodePacked(msg.sender,_voteIndex,_snum));
          return voted[msg.sender].voteHash==_voteHash;
      }
@@ -330,14 +337,14 @@ contract Ownable {
 
 
 
-    //request for terminating the vote
+    //Request for terminating the vote
     function requestToTerminateVote() public inState(State.Voting) onlyOwner{
         require(terminate_req==false);
         terminate_req=true;
 
     }
 
-    //permission given by all owners to terminate the vote
+    //Permission given by all owners to terminate the vote
     function givePermissionToTerminateVote() public inState(State.Voting) {
          require(terminate_vote_permit==false,"Permission is already granted");
          require(terminate_req==true,"No request for terminating vote");
@@ -352,6 +359,7 @@ contract Ownable {
 
     } 
 
+    //Function to terminate the Election with the permission of other Authorities
     function terminate() public inState(State.Voting) onlyOwner {
         require(terminate_vote_permit==true,"Permission Acquisition Required");
         for(uint i=0;i<candidates.length;i++)
