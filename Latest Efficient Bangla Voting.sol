@@ -28,7 +28,7 @@ contract Ownable {
   bool private terminate_vote_permit=false;
   uint private permitForTerminationCount=0;
 
-  address private requested_owner;
+  address public requested_owner;
   address private first_request_address;
   uint private message;
 
