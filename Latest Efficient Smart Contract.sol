@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "hardhat/console.sol";
 
 contract Ownable {
+  //using SafeMath for uint256;
 
   address private owner;
   address private nextOwner;
