@@ -4,12 +4,16 @@ pragma solidity ^0.8.0;
 import "hardhat/console.sol";
 
 contract Ownable {
-  //using SafeMath for uint256;
 
   address private owner;
   address private nextOwner;
   uint public hidden_number1;
   uint public hidden_number2;
+
+  uint public hidden_number3;
+  uint public hidden_number4;
+
+
   uint private owner_count=0;
   uint private request_key;
 
@@ -31,6 +35,7 @@ contract Ownable {
   address public requested_owner;
   address private first_request_address;
   uint private message;
+  uint private req_message;
 
   constructor() {
     owner = msg.sender;
@@ -59,24 +64,26 @@ contract Ownable {
   }
 
   //Verification stage for the requested user
-  function openRequestAccess(address _requested_owner, uint _request_key) public onlyOwner {
+  function openRequestAccess(address _requested_owner, uint _h1, uint _h2, uint _message) public onlyOwner {
       require(open_request==false);
       require(request==false);
       require(first_req==true,"Initial Request Required");
       require(_requested_owner!=owner);
       require(first_request_address==_requested_owner);
       requested_owner=_requested_owner;
-      request_key=_request_key;
+      hidden_number3=_h1;
+      hidden_number4=_h2;
+      req_message=_message;
       open_request=true;
 
   }
 
   //Stage for the requested user to verify his request
-  function requestAccess(uint _key) public {
+  function requestAccess(uint _message) public {
       require(request==false);
       require(open_request==true);
       require(requested_owner==msg.sender);
-      require(request_key==_key);
+      require(req_message==_message);
       request=true;
       open_request=false;
 
@@ -308,7 +315,7 @@ contract Ownable {
                 }
             }
             state = State.Ended;
-            //showResult();
+            showResult();
             return;
         }
         else
